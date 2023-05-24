@@ -1,0 +1,531 @@
+# Required libraries which are available at https://cran.r-project.org/
+library(ggplot2)
+library(ggpubr)
+library(rootSolve)
+library(cowplot)
+
+# Loading the data files which must be in same folder as the R code file
+Stringer <- read.csv("Data_Stringer_AJP_1997.csv" , header = TRUE, sep = ",")
+Astrand  <- read.csv("Data_Astrand_AJP_1964.csv"  , header = TRUE, sep = ";")
+
+
+
+############################ Stringer: LINEAR MODEL ############################
+
+# Fitting linear model to Stringer's data 
+Stringer_linear <- lm(avDiff_mLper100mL ~ pc_VO2max, data = Stringer)
+
+# Linear model summary and 95% Confidence Intervals for model coefficients 
+summary(Stringer_linear) 
+confint(Stringer_linear) 
+
+
+# Constructing prediction interval (_pi); & combine it with Stringer_linear data frame
+Stringer_linear_pi <- predict(Stringer_linear, interval = "prediction")
+Stringer_linear_pi <- cbind(Stringer, Stringer_linear_pi)
+
+
+# Plotting Stringer's the linear model
+Figure2A <- 
+  ggplot(data = Stringer_linear_pi, aes(x = pc_VO2max, y = avDiff_mLper100mL)) +
+  geom_point(shape = 21, color = "grey21", fill = "black", stroke = 0.1, size = 0.7) +
+  geom_smooth(method = lm, se = TRUE, size = 0.2, colour = "black") +
+  geom_line(aes(y = lwr), color = "black", linetype = "dashed", size = 0.2) +
+  geom_line(aes(y = upr), color = "black", linetype = "dashed", size = 0.2) +
+  # Following command adds regression equation to plot
+  stat_regline_equation(
+    aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~~")), 
+    formula = y ~ x, 
+    size = 2.5
+  ) +
+  annotate("text", x = 5, y = 16.5, label = "n = 105", hjust = 0, vjust = 1, size = 2.5) +
+  annotate("text", x = 5, y = 15.5, label = "p < 0.001", hjust = 0, vjust = 1, size = 2.5) +
+  scale_x_continuous(breaks = seq(0, 100, by = 10)) +
+  scale_y_continuous(breaks = seq(0, 20, by = 2)) +
+  xlab(expression("%VO"[2] ~ max)) +
+  ylab(expression(paste("C(a-", bar(v), "DO"[2]*")" ~ "(ml/100ml)"))) + 
+  theme_bw() +
+  theme(text = element_text(size = 9), axis.text = element_text(size = 8))
+
+
+# Create R base scatterplot smoother for Stringer's linear Residuals vs Fitted Values plot
+lowess_Stringer_linear <-
+  as.data.frame(with(
+    Stringer_linear$model,
+    lowess(x = Stringer_linear$fitted.values, y = Stringer_linear$residuals)
+  ))
+
+# Residuals vs Fitted Values for Stringers' linear model
+Figure2B <- 
+  ggplot(Stringer_linear$model, aes(x = Stringer_linear$fitted.values, y = Stringer_linear$residuals)) +
+  geom_point(shape = 21, color = "grey21", fill = "black", stroke = 0.1, size = 0.7) +
+  geom_hline(yintercept = 0, linetype = "dashed",col = "grey") +
+  geom_path(data = lowess_Stringer_linear, aes(x = x, y = y), col = "black", size = 0.2) +
+  xlab(expression("Fitted Values")) +
+  ylab(expression("Residuals")) +
+  theme_bw() +
+  theme(text = element_text(size = 9), axis.text = element_text(size = 8))
+
+
+
+###################### Stringer: 3rd ORDER POLYNOMIAL MODEL #####################
+
+
+# Fitting 3rd order polynomial function to Stringer's data
+Stringer_3polynomial <- lm(avDiff_mLper100mL ~ poly(pc_VO2max, degree=3, raw=TRUE), data=Stringer)
+
+# 3rd order polynomial model summary and 95% Confidence Intervals for coefficients
+summary(Stringer_3polynomial) 
+confint(Stringer_3polynomial) 
+
+
+# Finding x_inflection of 3rd order polynomial fit function for Stringer's data 
+# is done by using the formula x_inflection = -(b / 3a), where f(x) = ax^3 + bx^2 + cx + d 
+# and a != 0
+Stringer_inflection <- -(coef(Stringer_3polynomial)[3] / (3 * coef(Stringer_3polynomial)[4]))
+
+
+# Constructing prediction interval (_pi); combining it with Stringer_3polynomial data frame
+Stringer_3polynomial_pi <- predict(Stringer_3polynomial, interval = "prediction")
+Stringer_3polynomial_pi <- cbind(Stringer, Stringer_3polynomial_pi)
+
+
+# Plotting 3rd order polynomial model 
+Figure2C <- 
+  ggplot(data = Stringer_3polynomial_pi, aes(x = pc_VO2max, y = avDiff_mLper100mL)) +
+  geom_point(shape = 21, color = "grey21", fill = "black", stroke = 0.1, size = 0.7) +
+  geom_smooth(
+    method = lm,
+    se = TRUE,
+    formula = y ~ poly(x, 3, raw = TRUE),
+    size = 0.2,
+    colour = "black"
+  ) +
+  geom_line(aes(y = lwr), color = "black", linetype = "dashed", size = 0.2) +
+  geom_line(aes(y = upr), color = "black", linetype = "dashed", size = 0.2) +
+  # Following command adds regression equation to plot
+  stat_regline_equation(
+    aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~~")), 
+    formula = y ~ poly(x, 3, raw = TRUE), 
+    geom = "text", 
+    size = 2.5
+  ) +
+  annotate("text", x = 7, y = 16.8, label = "n = 105", hjust = 0, vjust = 1, size = 2.5) +
+  annotate("text", x = 7, y = 15.8, label = "p < 0.001", hjust = 0, vjust = 1, size = 2.5) +
+  geom_vline(xintercept = Stringer_inflection, linetype = "dashed", size = 0.2) +
+  annotate(
+    "text",
+    x = 58,
+    y = 3.5,
+    label = "Inflection Point (56.8%)",
+    hjust = 0,
+    vjust = 1,
+    size = 2.5
+  ) +
+  scale_x_continuous(breaks = seq(0, 100, by = 10)) +
+  scale_y_continuous(breaks = seq(0, 20, by = 2)) +
+  xlab(expression("%VO"[2] ~ max)) +
+  ylab(expression(paste("C(a-", bar(v), "DO"[2]*")" ~ "(ml/100ml)"))) + 
+  theme_bw() +
+  theme(text = element_text(size = 9), axis.text = element_text(size = 8))
+
+
+
+# R base scatterplot smoother for following Residuals vs Fitted Values plot
+lowess_Stringer_3polynomial <-
+  as.data.frame(with(
+    Stringer_3polynomial$model,
+    lowess(x = Stringer_3polynomial$fitted.values, y = Stringer_3polynomial$residuals)
+  ))
+
+# Residuals vs Fitted Values for Stringers' 3rd order polynomial model
+Figure2D <- 
+  ggplot(Stringer_3polynomial$model, aes(x = Stringer_3polynomial$fitted.values, y = Stringer_3polynomial$residuals)) +
+  geom_point(shape = 21, color = "grey21", fill = "black", stroke = 0.1, size = 0.7) +
+  geom_hline(yintercept = 0, linetype = "dashed",col = "grey") +
+  geom_path(data = lowess_Stringer_3polynomial, aes(x = x, y = y), col = "black", size = 0.2) +
+  xlab(expression("Fitted Values")) +
+  ylab(expression("Residuals")) +
+  theme_bw() +
+  theme(text = element_text(size = 9), axis.text = element_text(size = 8))
+
+
+# Partial F-test comparing linear- vs 3rd order polynomial model
+anova(Stringer_linear, Stringer_3polynomial, test = "F") 
+
+
+# Creating multi-panel figure
+Figure2 <- plot_grid(
+  Figure2A,
+  Figure2B,
+  Figure2C,
+  Figure2D,
+  nrow = 2,
+  labels = c('A', 'B', 'C', 'D')
+)
+
+# Exporting plots from plot_grid command
+ggsave("Figure2.pdf", Figure2 , width = 18, height = 11, units = "cm")
+
+
+
+########################### PREPARING ASTRAND DATA SET #########################
+
+# Astrand's VO2 data are not in percentage of maximal VO2. A new function, 
+# 'pc_func', is defined to calculate the percentage. It takes one argument, 'arg1',
+# a set of VO2 data, and calculates the percentage based on the maximum value in the set.
+pc_func <- function(arg1) {
+  arg1 / max(arg1) * 100
+}
+
+# Calculating the percentages of maximum VO2 for each participant using pc_func function
+Astrand$VO2_L_pc <- ave(Astrand$VO2_L, Astrand$ID, FUN = pc_func)
+
+
+
+########################### ASTRAND LINEAR MODEL  ##############################
+
+# Fits linear model to Astrand's data 
+Astrand_linear <- lm(avO2diff_mLper100mL ~ VO2_L_pc, data = Astrand)
+
+# Linear model summary and 95% Confidence Intervals for model coefficients
+summary(Astrand_linear) 
+confint(Astrand_linear) 
+
+
+# Constructing prediction interval (_pi); combining it with data in data frame
+Astrand_linear_pi <- predict(Astrand_linear, interval = "prediction")
+Astrand_linear_pi <- cbind(Astrand, Astrand_linear_pi)
+
+
+# Constructing Figure 3A
+Figure3A <- 
+  ggplot(data = Astrand_linear_pi, aes(x = VO2_L_pc, y = avO2diff_mLper100mL)) +
+  geom_point(
+    aes(colour = factor(Gender), fill = factor(Gender)),
+    shape = 21,
+    show.legend = FALSE,
+    stroke = 0.1,
+    size = 0.7
+  ) +
+  scale_fill_manual(values = c("Female" = "red", "Male" = "black")) +
+  scale_color_manual(values = c("Female" = "firebrick2", "Male" = "grey21")) +
+  geom_smooth(method  = lm, se = TRUE, formula = y ~ x, size = 0.2, colour = "black") +
+  geom_line(aes(y = lwr), color = "black", linetype = "dashed", size = 0.2) +
+  geom_line(aes(y = upr), color = "black", linetype = "dashed", size = 0.2) +
+  xlab(expression("%VO"[2] ~ max)) +
+  ylab(expression(paste("C(a-", bar(v), "DO"[2]*")" ~ "(ml/100ml)"))) + 
+  stat_regline_equation(
+    aes(label=paste( ..eq.label.., ..rr.label.., sep="~~~~")), 
+    formula = y ~ x, 
+    size = 2.5
+  ) +
+  annotate("text", x = 5, y = 17.8, label = "n = 126", hjust = 0, vjust = 1, size = 2.5) +
+  annotate("text", x = 5, y = 16.5, label = "p < 0.001", hjust = 0, vjust = 1, size = 2.5) +
+  scale_x_continuous(breaks = seq(0, 100, by = 10)) +
+  scale_y_continuous(breaks = seq(0, 20,  by = 2)) +
+  theme_bw() +
+  theme(text = element_text(size = 9), axis.text = element_text(size = 8))
+
+
+
+# R base  scatterplot smoother for following Residuals vs Fitted Values plot
+lowess_Astrand_linear <-
+  as.data.frame(with(
+    Astrand_linear$model,
+    lowess(x = Astrand_linear$fitted.values, y = Astrand_linear$residuals)
+  ))
+
+# Residuals vs Fitted Values for Astrands' linear model #DOUBLE CHECK IF COLOUR CODING OF GROUPS IS CORRECT
+Figure3B <- 
+  ggplot(Astrand_linear$model, aes(x = Astrand_linear$fitted.values, y = Astrand_linear$residuals)) +
+  geom_point(
+    aes(colour = factor(Astrand$Gender), fill = factor(Astrand$Gender)),
+    shape = 21,
+    show.legend = FALSE,
+    stroke = 0.1,
+    size = 0.7
+  ) +
+  scale_fill_manual(values = c("Female" = "red", "Male" = "black")) +
+  scale_color_manual(values = c("Female" = "firebrick2", "Male" = "grey21")) +
+  geom_hline(yintercept = 0, linetype = "dashed",col = "grey") +
+  geom_path(data = lowess_Astrand_linear, aes(x = x, y = y), col = "black", size = 0.2) +
+  xlab(expression("Fitted Values")) +
+  ylab(expression("Residuals")) +
+  theme_bw() +
+  theme(text = element_text(size = 9), axis.text = element_text(size = 8))
+
+
+########################### Astrand 3rd ORDER POLYNOMIAL MODEL #################
+
+# Fitting 3rd order polynomial function to Astrand's data
+Astrand_3polynomial <- lm(avO2diff_mLper100mL ~ poly(VO2_L_pc, degree=3, raw=TRUE), data=Astrand)
+
+# Summary of the model and 95% confidence intervals for model coefficients
+summary(Astrand_3polynomial)
+confint(Astrand_3polynomial)
+
+
+# Finding x_inflection of 3rd order polynomial fit function for Stringer's data 
+# is done by using the formula x_inflection = -(b / 3a), where f(x) = ax^3 + bx^2 + cx + d 
+# and a != 0
+Astrand_inflection <- -(coef(Astrand_3polynomial)[3] / (3 * coef(Astrand_3polynomial)[4]))
+
+
+# Constructing prediction interval (_pi); combining it with data in data frame
+Astrand_3polynomial_pi <- predict(Astrand_3polynomial, interval = "prediction")
+Astrand_3polynomial_pi <- cbind(Astrand, Astrand_3polynomial_pi)
+
+
+# Plotting data with 3rd order polynomial fit function
+Figure3C <- 
+  ggplot(data = Astrand_3polynomial_pi, aes(x = VO2_L_pc, y = avO2diff_mLper100mL)) +
+  geom_point(
+    aes(colour = factor(Gender), fill = factor(Gender)),
+    shape = 21,
+    show.legend = FALSE,
+    stroke = 0.1,
+    size = 0.7
+  ) +
+  scale_fill_manual(values = c("Female" = "red", "Male" = "black"))+
+  scale_color_manual(values = c("Female" = "firebrick2", "Male" = "grey21")) +
+  scale_x_continuous(breaks = seq(0, 100, by=10)) +
+  scale_y_continuous(breaks = seq(0, 20,  by=2)) +
+  geom_smooth(method=lm, se=TRUE, formula=y ~ poly(x, 3, raw=TRUE), size=0.2, colour="black") +
+  geom_line(aes(y = lwr), color = "black", linetype = "dashed", size=0.2) +
+  geom_line(aes(y = upr), color = "black", linetype = "dashed", size=0.2) +
+  xlab(expression("%VO"[2] ~ max)) +
+  ylab(expression(paste("C(a-", bar(v), "DO"[2]*")" ~ "(ml/100ml)"))) + 
+  geom_vline(xintercept = Astrand_inflection, linetype = "dashed", size=0.2) +
+  annotate("text", x=65, y=1.8, label="Inflection Point (64.3%)", hjust=0, vjust=1, size=2.5) +
+  annotate("text", x=5, y=18, label = "n = 126", hjust=0, vjust=1,size=2.5) +
+  annotate("text", x=5, y=16.7, label="p < 0.001", hjust=0, vjust=1,size=2.5) + 
+  stat_regline_equation(
+    label.x = 5,
+    label.y = 19,
+    aes(label =  paste(..eq.label.., ..rr.label.., sep = "~~~~")),
+    formula = y ~ poly(x, 3, raw = TRUE),
+    size = 2.5
+  ) +
+  theme_bw() +
+  theme(text=element_text(size=9), axis.text = element_text(size=8))
+
+
+
+# R base scatterplot smoother for following Residuals vs Fitted Values plot
+lowess_Astrand_3polynomial <-
+  as.data.frame(with(
+    Astrand_3polynomial$model,
+    lowess(x = Astrand_3polynomial$fitted.values, y = Astrand_3polynomial$residuals)
+  ))
+
+# Residuals vs Fitted Values for Astrands' linear model #DOUBLE CHECK IF COLOUR CODING OF GROUPS IS CORRECT
+Figure3D <- 
+  ggplot(Astrand_3polynomial$model, aes(x = Astrand_3polynomial$fitted.values, y = Astrand_3polynomial$residuals)) +
+  geom_point(
+    aes(colour = factor(Astrand$Gender), fill = factor(Astrand$Gender)),
+    shape = 21,
+    show.legend = FALSE,
+    stroke = 0.1,
+    size = 0.7
+  ) +
+  scale_fill_manual(values = c("Female" = "red", "Male" = "black")) +
+  scale_color_manual(values = c("Female" = "firebrick2", "Male" = "grey21")) +
+  geom_hline(yintercept = 0, linetype = "dashed",col = "grey") +
+  geom_path(data = lowess_Astrand_3polynomial, aes(x = x, y = y), col = "black", size = 0.2) +
+  xlab(expression("Fitted Values")) +
+  ylab(expression("Residuals")) +
+  theme_bw() +
+  theme(text = element_text(size = 9), axis.text = element_text(size = 8))
+
+
+# Creating multi-panel figure
+Figure3 <-
+  plot_grid(
+    Figure3A,
+    Figure3B,
+    Figure3C,
+    Figure3D,
+    nrow = 2,
+    labels = c('A', 'B', 'C', 'D')
+  )
+
+# Exporting plot 
+ggsave("Figure3.pdf", Figure3 , width = 18, height = 11, units = "cm")
+
+# Partial F-test comparing linear and 3rd order polynomial fit to Astrand's data
+anova(Astrand_linear, Astrand_3polynomial, test = "F")
+
+
+
+######################## PLOT MODEL COMPARISON ##################################
+
+# Store 3rd order polynomial model of Astrand's data as function named Astrand_fit_function
+Astrand_fit_function <- function(x)
+  coef(Astrand_3polynomial)[1]         +
+  coef(Astrand_3polynomial)[2] * x     +
+  coef(Astrand_3polynomial)[3] * x ^ 2 +
+  coef(Astrand_3polynomial)[4] * x ^ 3
+
+# Plot Comparing the models
+Figure4A <- 
+  ggplot(data = Stringer_linear_pi, aes(x = pc_VO2max, y = avDiff_mLper100mL)) +
+  geom_point(shape = 21, color = "grey21", fill  = "black", stroke = 0.1, size=0.7) +
+  geom_smooth(method = lm, se = FALSE, size = 0.2, col = "red") +
+  geom_smooth(method = lm, se = FALSE, formula = y ~ poly(x, 3, raw = TRUE), size = 0.2, col="red") +
+  geom_vline(xintercept = Stringer_inflection, linetype = "dashed", size=0.2) +
+  annotate(
+    "text",
+    x = 58,
+    y = 3.7,
+    label = "Inflection Point (56.8%)",
+    hjust = 0,
+    vjust = 1,
+    size = 2.5
+  ) +
+  geom_function(fun = Astrand_fit_function, size = 0.2) + # Astrand_fit_function from above
+  scale_x_continuous(breaks=seq(0, 100, by = 10)) +
+  scale_y_continuous(breaks=seq(0,  20, by = 2)) +
+  xlab(expression("%VO"[2] ~ max)) +
+  ylab(expression(paste("C(a-", bar(v), "DO"[2]*")" ~ "(ml/100ml)"))) + 
+  theme_bw() +
+  theme(text = element_text(size = 9))
+
+
+
+################### INFLECTION POINT OF SEVERINGHAUS ODC #######################
+
+# Severinghaus function for Oxygen Dissociation Curve as expression
+Severinghaus <- expression((((PO2^3 + 150*PO2)^-1 * 23400) + 1)^-1)
+
+
+# Calculating the 3 derivatives of the Severinghaus function
+first_derivative_Severinghaus  <- D(Severinghaus, 'PO2')
+second_derivative_Severinghaus <- D(first_derivative_Severinghaus, 'PO2')
+third_derivative_Severinghaus  <- D(second_derivative_Severinghaus, 'PO2')
+
+
+# Calculating the roots of the 2nd derivative in the PO2 interval 0 to 100 mmHg
+Severinghaus_inflection_PO2 <- uniroot.all(
+  function(PO2) eval(second_derivative_Severinghaus),
+  interval = c(0, 100)
+)
+Severinghaus_inflection_PO2
+
+
+# Checking 3rd derivative at inflection. If < 0 = TRUE, then concave up to concave down
+PO2 <- Severinghaus_inflection_PO2
+eval(third_derivative_Severinghaus) < 0 
+
+
+# Get saturation of inflection by solving Severinghaus equation at inflection
+PO2 <- Severinghaus_inflection_PO2
+Severinghaus_inflection_saturation <- eval(Severinghaus)
+Severinghaus_inflection_saturation
+
+
+# Calculate the slope of the Severinghaus function at inflection point
+PO2 <- Severinghaus_inflection_PO2
+Severinghaus_inflection_slope <- eval(first_derivative_Severinghaus)
+
+
+# Use Severinghaus equation to create an R function that outputs Saturation for Po2 values
+Severinghaus_function <- function(x){ (((x^3 + 150*x)^-1 * 23400) + 1)^-1 }
+
+
+# To find the slope tangent of the Severinghaus function's inflection point, 
+# calculate its intercept using the formula y = m * x + b, where b = y - m * x.
+Severinghaus_inflection_intercept <- Severinghaus_inflection_saturation - 
+  Severinghaus_inflection_slope * 
+  Severinghaus_inflection_PO2
+
+
+# Plotting Severinghaus_function with slope tangent of inflection
+Figure4B <- 
+  ggplot(data.frame(x = c(0, 100)), aes(x = x)) +
+  stat_function(fun = Severinghaus_function, colour = "black" , size = 0.5, xlim = c(0,100)) + 
+  # Plots horizontal dashed line corresponding to saturation at inflection 
+  geom_segment(
+    aes(
+      x = 0,
+      xend = Severinghaus_inflection_PO2,
+      y = Severinghaus_inflection_saturation,
+      yend = Severinghaus_inflection_saturation,
+      size = 0.2
+    ),
+    linetype = "dashed",
+    size = 0.2
+  )+
+  # Plots slope tangent of the inflection point
+  geom_abline(
+    intercept = Severinghaus_inflection_intercept,
+    slope = Severinghaus_inflection_slope,
+    linetype = "twodash",
+    color = "black",
+    size = 0.5
+  ) +
+  # Plots vertical dashed line corresponding to PO2 at inflection
+  geom_segment(
+    aes(
+      x = Severinghaus_inflection_PO2,
+      xend = Severinghaus_inflection_PO2,
+      y = 0,
+      yend = Severinghaus_inflection_saturation
+    ),
+    linetype = "dashed",
+    size = 0.2
+  ) +
+  # Plots vertical dashed line corresponding to PO2 = 40 mmHg (general resting PO2 mixed venous blood)
+  geom_segment(
+    aes(
+      x = 40,
+      xend = 40,
+      y = 0,
+      yend = Severinghaus_function(40)
+    ),
+    linetype = "dashed",
+    size = 0.2
+  ) +
+  # Plots horizontal dashed line at saturation corresponding to PO2 = 40 mmHg 
+  geom_segment(aes(
+    x = 0,
+    xend = 40,
+    y = Severinghaus_function(40),
+    yend = Severinghaus_function(40)
+  ),
+  linetype = "dashed",
+  size = 0.2) +
+  scale_y_continuous(
+    name = "Fractional Saturation",
+    breaks = seq(0.1, 1.0, 0.1),
+    limits = c(0, 1),
+    expand = c(0, 0)
+  ) +
+  scale_x_continuous(
+    name = expression("PO"[2] * " (mmHg)"),
+    breaks = seq(0, 100, 10),
+    limits = c(0, 100),
+    expand = c(0, 0)
+  ) +
+  theme_bw() +
+  theme(text = element_text(size = 9))
+
+
+# Creating multi-panel figure
+Figure4 <- plot_grid(Figure4A, Figure4B, nrow = 1, labels = c('A', 'B'))
+
+# Exporting plots from plot_grid command
+ggsave("Figure4.pdf", Figure4 , width = 18, height = 5.5, units = "cm")
+
+
+# Stringer's 3rd order polynomial fit to estimate the arterio-mixed-venous O2 
+# difference (avDiff) at 56.8% VO2max.
+VO2max_56.8_percent <- data.frame(pc_VO2max=c(56.8))
+avDiff_at_VO2max_56.8_percent <- predict(Stringer_3polynomial, newdata = VO2max_56.8_percent)
+avDiff_at_VO2max_56.8_percent
+
+# Stringer's 3rd order polynomial fit to estimate the arterio-mixed-venous O2 
+# difference (avDiff) at 60% VO2max.
+VO2max_60_percent <- data.frame(pc_VO2max=c(60))
+avDiff_at_VO2max_60_percent <- predict(Stringer_3polynomial, newdata = VO2max_60_percent)
+avDiff_at_VO2max_60_percent
