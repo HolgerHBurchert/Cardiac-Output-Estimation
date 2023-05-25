@@ -13,8 +13,8 @@ b) "Data_Astrand_AJP_1964" published by Åstrand, P. O., Cuddy, T. E., Saltin, B
 
 - Four PDF files of the Figures presented in assocaited manuscript. Figures 2,3 and 4 are created by running the R code, Figure 5 was plotted in GraphPad PRISM.
 
-DEPENDENCIES: The R code requires that the following libraries are installed: ggplot2, ggpubr, rootSolve, cowplot
-
+DEPENDENCIES: The R code requires that the following packages are installed: ggplot2, ggpubr, rootSolve, cowplot. These packages are available at https://cran.r-project.org/ and
+can be installed using the following code:
 ```{r}
 install.packages("ggplot2")
 install.packages("ggpubr")
