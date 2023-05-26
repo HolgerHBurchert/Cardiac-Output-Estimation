@@ -11,11 +11,11 @@ The repository contains the data and the analyses code to facilitate repetition,
 
   * "Data_Astrand_AJP_1964" published by Åstrand, P. O., Cuddy, T. E., Saltin, B., & Stenberg, J. (1964). Cardiac output during submaximal and maximal work. Journal of Applied Physiology, 19(2), 268-274. https://doi.org/10.1152/jappl.1964.19.2.268
 
-- Four PDF files of the Figures presented in assocaited manuscript. Figures 2, 3 and 4 are created by running the R code, Figure 5 was plotted in GraphPad PRISM.
+  * Four PDF files of the Figures presented in assocaited manuscript. Figures 2, 3 and 4 are created by running the R code, Figure 5 was plotted in GraphPad PRISM.
 
-- The LICENSE file providing the terms of use.
-- The R project file named "Cardiac-Output-Estimation.Rproj". 
-- the .gitignore file
+  * The LICENSE file providing the terms of use.
+  * The R project file named "Cardiac-Output-Estimation.Rproj". 
+  * the .gitignore file
 
 ## Dependencies
 The R code requires that the following packages are installed: ggplot2, ggpubr, rootSolve, cowplot. These packages are available at https://cran.r-project.org/ and
