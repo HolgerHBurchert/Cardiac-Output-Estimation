@@ -2,6 +2,7 @@
 
 This R project repository is associated with the manuscript "Revisiting cardiac output estimated noninvasively from oxygen uptake during exercise: An exploratory hypothesis generating replication study".
 The repository contains the data and the analyses code to facilitate repetition, replication and reproduction of the analyses published in the manuscript.
+To cite the code, use: [![DOI](https://zenodo.org/badge/644910171.svg)](https://zenodo.org/badge/latestdoi/644910171)
 
 ## Repository Content:
 - The R file containing all the analyses code, called "Analyses_Code".
