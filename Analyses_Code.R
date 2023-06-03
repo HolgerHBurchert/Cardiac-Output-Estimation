@@ -3,6 +3,7 @@ library(ggplot2)
 library(ggpubr)
 library(rootSolve)
 library(cowplot)
+library(car)
 
 # Loading the data files which must be in same folder as the R code file
 Stringer <- read.csv("Data_Stringer_AJP_1997.csv" , header = TRUE, sep = ",")
@@ -78,12 +79,13 @@ Stringer_3polynomial <- lm(avDiff_mLper100mL ~ poly(pc_VO2max, degree=3, raw=TRU
 summary(Stringer_3polynomial) 
 confint(Stringer_3polynomial) 
 
-
 # Finding x_inflection of 3rd order polynomial fit function for Stringer's data 
 # is done by using the formula x_inflection = -(b / 3a), where f(x) = ax^3 + bx^2 + cx + d 
 # and a != 0
 Stringer_inflection <- -(coef(Stringer_3polynomial)[3] / (3 * coef(Stringer_3polynomial)[4]))
 
+# Calculating approximate 95%-confidence interval for inflection point using the delta method
+car::deltaMethod(Stringer_3polynomial, "-b2/(3*b3)", parameterNames = paste0("b", 0:3), level = 0.95)
 
 # Constructing prediction interval (_pi); combining it with Stringer_3polynomial data frame
 Stringer_3polynomial_pi <- predict(Stringer_3polynomial, interval = "prediction")
