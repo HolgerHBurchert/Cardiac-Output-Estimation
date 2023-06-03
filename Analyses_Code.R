@@ -282,6 +282,8 @@ confint(Astrand_3polynomial)
 # and a != 0
 Astrand_inflection <- -(coef(Astrand_3polynomial)[3] / (3 * coef(Astrand_3polynomial)[4]))
 
+# Calculating approximate 95%-confidence interval for inflection point using the delta method
+Astrand_inflection_ci <- car::deltaMethod(Astrand_3polynomial, "-b2/(3*b3)", parameterNames = paste0("b", 0:3), level = 0.95)
 
 # Constructing prediction interval (_pi); combining it with data in data frame
 Astrand_3polynomial_pi <- predict(Astrand_3polynomial, interval = "prediction")
@@ -308,6 +310,15 @@ Figure3C <-
   xlab(expression("%VO"[2] ~ max)) +
   ylab(expression(paste("C(a-", bar(v), "DO"[2]*")" ~ "(ml/100ml)"))) + 
   geom_vline(xintercept = Astrand_inflection, linetype = "dashed", linewidth=0.2) +
+  annotate(
+    "rect",
+    fill = "grey",
+    alpha = 0.3,
+    xmin = Astrand_inflection_ci$`2.5 %`,
+    xmax = Astrand_inflection_ci$`97.5 %`,
+    ymin = -Inf,
+    ymax = Inf
+  ) +
   annotate("text", x=65, y=1.8, label="Inflection Point (64.3%)", hjust=0, vjust=1, size=2.5) +
   annotate("text", x=5, y=18, label = "n = 126", hjust=0, vjust=1,size=2.5) +
   annotate("text", x=5, y=16.7, label="p < 0.001", hjust=0, vjust=1,size=2.5) + 
