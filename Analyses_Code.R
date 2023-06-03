@@ -85,7 +85,7 @@ confint(Stringer_3polynomial)
 Stringer_inflection <- -(coef(Stringer_3polynomial)[3] / (3 * coef(Stringer_3polynomial)[4]))
 
 # Calculating approximate 95%-confidence interval for inflection point using the delta method
-car::deltaMethod(Stringer_3polynomial, "-b2/(3*b3)", parameterNames = paste0("b", 0:3), level = 0.95)
+Stringer_inflection_ci <- car::deltaMethod(Stringer_3polynomial, "-b2/(3*b3)", parameterNames = paste0("b", 0:3), level = 0.95)
 
 # Constructing prediction interval (_pi); combining it with Stringer_3polynomial data frame
 Stringer_3polynomial_pi <- predict(Stringer_3polynomial, interval = "prediction")
@@ -115,6 +115,15 @@ Figure2C <-
   annotate("text", x = 7, y = 16.8, label = "n = 105", hjust = 0, vjust = 1, size = 2.5) +
   annotate("text", x = 7, y = 15.8, label = "p < 0.001", hjust = 0, vjust = 1, size = 2.5) +
   geom_vline(xintercept = Stringer_inflection, linetype = "dashed", linewidth = 0.2) +
+  annotate(
+    "rect",
+    fill = "grey",
+    alpha = 0.3,
+    xmin = Stringer_inflection_ci$`2.5 %`,
+    xmax = Stringer_inflection_ci$`97.5 %`,
+    ymin = -Inf,
+    ymax = Inf
+  ) +
   annotate(
     "text",
     x = 58,
