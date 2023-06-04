@@ -3,6 +3,7 @@ library(ggplot2)
 library(ggpubr)
 library(rootSolve)
 library(cowplot)
+library(car)
 
 # Loading the data files which must be in same folder as the R code file
 Stringer <- read.csv("Data_Stringer_AJP_1997.csv" , header = TRUE, sep = ",")
@@ -29,12 +30,12 @@ Stringer_linear_pi <- cbind(Stringer, Stringer_linear_pi)
 Figure2A <- 
   ggplot(data = Stringer_linear_pi, aes(x = pc_VO2max, y = avDiff_mLper100mL)) +
   geom_point(shape = 21, color = "grey21", fill = "black", stroke = 0.1, size = 0.7) +
-  geom_smooth(method = lm, se = TRUE, size = 0.2, colour = "black") +
-  geom_line(aes(y = lwr), color = "black", linetype = "dashed", size = 0.2) +
-  geom_line(aes(y = upr), color = "black", linetype = "dashed", size = 0.2) +
+  geom_smooth(method = lm, se = TRUE, linewidth = 0.2, colour = "black") +
+  geom_line(aes(y = lwr), color = "black", linetype = "dashed", linewidth = 0.2) +
+  geom_line(aes(y = upr), color = "black", linetype = "dashed", linewidth = 0.2) +
   # Following command adds regression equation to plot
   stat_regline_equation(
-    aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~~")), 
+    aes(label = paste(after_stat(eq.label), after_stat(rr.label), sep = "~~~~")), 
     formula = y ~ x, 
     size = 2.5
   ) +
@@ -60,7 +61,7 @@ Figure2B <-
   ggplot(Stringer_linear$model, aes(x = Stringer_linear$fitted.values, y = Stringer_linear$residuals)) +
   geom_point(shape = 21, color = "grey21", fill = "black", stroke = 0.1, size = 0.7) +
   geom_hline(yintercept = 0, linetype = "dashed",col = "grey") +
-  geom_path(data = lowess_Stringer_linear, aes(x = x, y = y), col = "black", size = 0.2) +
+  geom_path(data = lowess_Stringer_linear, aes(x = x, y = y), col = "black", linewidth = 0.2) +
   xlab(expression("Fitted Values")) +
   ylab(expression("Residuals")) +
   theme_bw() +
@@ -78,12 +79,13 @@ Stringer_3polynomial <- lm(avDiff_mLper100mL ~ poly(pc_VO2max, degree=3, raw=TRU
 summary(Stringer_3polynomial) 
 confint(Stringer_3polynomial) 
 
-
 # Finding x_inflection of 3rd order polynomial fit function for Stringer's data 
 # is done by using the formula x_inflection = -(b / 3a), where f(x) = ax^3 + bx^2 + cx + d 
 # and a != 0
 Stringer_inflection <- -(coef(Stringer_3polynomial)[3] / (3 * coef(Stringer_3polynomial)[4]))
 
+# Calculating approximate 95%-confidence interval for inflection point using the delta method
+Stringer_inflection_ci <- car::deltaMethod(Stringer_3polynomial, "-b2/(3*b3)", parameterNames = paste0("b", 0:3), level = 0.95)
 
 # Constructing prediction interval (_pi); combining it with Stringer_3polynomial data frame
 Stringer_3polynomial_pi <- predict(Stringer_3polynomial, interval = "prediction")
@@ -98,21 +100,30 @@ Figure2C <-
     method = lm,
     se = TRUE,
     formula = y ~ poly(x, 3, raw = TRUE),
-    size = 0.2,
+    linewidth = 0.2,
     colour = "black"
   ) +
-  geom_line(aes(y = lwr), color = "black", linetype = "dashed", size = 0.2) +
-  geom_line(aes(y = upr), color = "black", linetype = "dashed", size = 0.2) +
+  geom_line(aes(y = lwr), color = "black", linetype = "dashed", linewidth = 0.2) +
+  geom_line(aes(y = upr), color = "black", linetype = "dashed", linewidth = 0.2) +
   # Following command adds regression equation to plot
   stat_regline_equation(
-    aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~~")), 
+    aes(label = paste(after_stat(eq.label), after_stat(rr.label), sep = "~~~~")), 
     formula = y ~ poly(x, 3, raw = TRUE), 
     geom = "text", 
     size = 2.5
   ) +
   annotate("text", x = 7, y = 16.8, label = "n = 105", hjust = 0, vjust = 1, size = 2.5) +
   annotate("text", x = 7, y = 15.8, label = "p < 0.001", hjust = 0, vjust = 1, size = 2.5) +
-  geom_vline(xintercept = Stringer_inflection, linetype = "dashed", size = 0.2) +
+  geom_vline(xintercept = Stringer_inflection, linetype = "dashed", linewidth = 0.2) +
+  annotate(
+    "rect",
+    fill = "grey",
+    alpha = 0.3,
+    xmin = Stringer_inflection_ci$`2.5 %`,
+    xmax = Stringer_inflection_ci$`97.5 %`,
+    ymin = -Inf,
+    ymax = Inf
+  ) +
   annotate(
     "text",
     x = 58,
@@ -142,8 +153,8 @@ lowess_Stringer_3polynomial <-
 Figure2D <- 
   ggplot(Stringer_3polynomial$model, aes(x = Stringer_3polynomial$fitted.values, y = Stringer_3polynomial$residuals)) +
   geom_point(shape = 21, color = "grey21", fill = "black", stroke = 0.1, size = 0.7) +
-  geom_hline(yintercept = 0, linetype = "dashed",col = "grey") +
-  geom_path(data = lowess_Stringer_3polynomial, aes(x = x, y = y), col = "black", size = 0.2) +
+  geom_hline(yintercept = 0, linetype = "dashed", col = "grey") +
+  geom_path(data = lowess_Stringer_3polynomial, aes(x = x, y = y), col = "black", linewidth = 0.2) +
   xlab(expression("Fitted Values")) +
   ylab(expression("Residuals")) +
   theme_bw() +
@@ -210,13 +221,13 @@ Figure3A <-
   ) +
   scale_fill_manual(values = c("Female" = "red", "Male" = "black")) +
   scale_color_manual(values = c("Female" = "firebrick2", "Male" = "grey21")) +
-  geom_smooth(method  = lm, se = TRUE, formula = y ~ x, size = 0.2, colour = "black") +
-  geom_line(aes(y = lwr), color = "black", linetype = "dashed", size = 0.2) +
-  geom_line(aes(y = upr), color = "black", linetype = "dashed", size = 0.2) +
+  geom_smooth(method  = lm, se = TRUE, formula = y ~ x, linewidth = 0.2, colour = "black") +
+  geom_line(aes(y = lwr), color = "black", linetype = "dashed", linewidth = 0.2) +
+  geom_line(aes(y = upr), color = "black", linetype = "dashed", linewidth = 0.2) +
   xlab(expression("%VO"[2] ~ max)) +
   ylab(expression(paste("C(a-", bar(v), "DO"[2]*")" ~ "(ml/100ml)"))) + 
   stat_regline_equation(
-    aes(label=paste( ..eq.label.., ..rr.label.., sep="~~~~")), 
+    aes(label=paste(after_stat(eq.label), after_stat(rr.label), sep = "~~~~")), 
     formula = y ~ x, 
     size = 2.5
   ) +
@@ -248,8 +259,8 @@ Figure3B <-
   ) +
   scale_fill_manual(values = c("Female" = "red", "Male" = "black")) +
   scale_color_manual(values = c("Female" = "firebrick2", "Male" = "grey21")) +
-  geom_hline(yintercept = 0, linetype = "dashed",col = "grey") +
-  geom_path(data = lowess_Astrand_linear, aes(x = x, y = y), col = "black", size = 0.2) +
+  geom_hline(yintercept = 0, linetype = "dashed", col = "grey") +
+  geom_path(data = lowess_Astrand_linear, aes(x = x, y = y), col = "black", linewidth = 0.2) +
   xlab(expression("Fitted Values")) +
   ylab(expression("Residuals")) +
   theme_bw() +
@@ -271,6 +282,8 @@ confint(Astrand_3polynomial)
 # and a != 0
 Astrand_inflection <- -(coef(Astrand_3polynomial)[3] / (3 * coef(Astrand_3polynomial)[4]))
 
+# Calculating approximate 95%-confidence interval for inflection point using the delta method
+Astrand_inflection_ci <- car::deltaMethod(Astrand_3polynomial, "-b2/(3*b3)", parameterNames = paste0("b", 0:3), level = 0.95)
 
 # Constructing prediction interval (_pi); combining it with data in data frame
 Astrand_3polynomial_pi <- predict(Astrand_3polynomial, interval = "prediction")
@@ -291,19 +304,28 @@ Figure3C <-
   scale_color_manual(values = c("Female" = "firebrick2", "Male" = "grey21")) +
   scale_x_continuous(breaks = seq(0, 100, by=10)) +
   scale_y_continuous(breaks = seq(0, 20,  by=2)) +
-  geom_smooth(method=lm, se=TRUE, formula=y ~ poly(x, 3, raw=TRUE), size=0.2, colour="black") +
-  geom_line(aes(y = lwr), color = "black", linetype = "dashed", size=0.2) +
-  geom_line(aes(y = upr), color = "black", linetype = "dashed", size=0.2) +
+  geom_smooth(method=lm, se=TRUE, formula=y ~ poly(x, 3, raw=TRUE), linewidth=0.2, colour="black") +
+  geom_line(aes(y = lwr), color = "black", linetype = "dashed", linewidth=0.2) +
+  geom_line(aes(y = upr), color = "black", linetype = "dashed", linewidth=0.2) +
   xlab(expression("%VO"[2] ~ max)) +
   ylab(expression(paste("C(a-", bar(v), "DO"[2]*")" ~ "(ml/100ml)"))) + 
-  geom_vline(xintercept = Astrand_inflection, linetype = "dashed", size=0.2) +
+  geom_vline(xintercept = Astrand_inflection, linetype = "dashed", linewidth=0.2) +
+  annotate(
+    "rect",
+    fill = "grey",
+    alpha = 0.3,
+    xmin = Astrand_inflection_ci$`2.5 %`,
+    xmax = Astrand_inflection_ci$`97.5 %`,
+    ymin = -Inf,
+    ymax = Inf
+  ) +
   annotate("text", x=65, y=1.8, label="Inflection Point (64.3%)", hjust=0, vjust=1, size=2.5) +
   annotate("text", x=5, y=18, label = "n = 126", hjust=0, vjust=1,size=2.5) +
   annotate("text", x=5, y=16.7, label="p < 0.001", hjust=0, vjust=1,size=2.5) + 
   stat_regline_equation(
     label.x = 5,
     label.y = 19,
-    aes(label =  paste(..eq.label.., ..rr.label.., sep = "~~~~")),
+    aes(label = paste(after_stat(eq.label), after_stat(rr.label), sep = "~~~~")),
     formula = y ~ poly(x, 3, raw = TRUE),
     size = 2.5
   ) +
@@ -331,8 +353,8 @@ Figure3D <-
   ) +
   scale_fill_manual(values = c("Female" = "red", "Male" = "black")) +
   scale_color_manual(values = c("Female" = "firebrick2", "Male" = "grey21")) +
-  geom_hline(yintercept = 0, linetype = "dashed",col = "grey") +
-  geom_path(data = lowess_Astrand_3polynomial, aes(x = x, y = y), col = "black", size = 0.2) +
+  geom_hline(yintercept = 0, linetype = "dashed", col = "grey") +
+  geom_path(data = lowess_Astrand_3polynomial, aes(x = x, y = y), col = "black", linewidth = 0.2) +
   xlab(expression("Fitted Values")) +
   ylab(expression("Residuals")) +
   theme_bw() +
@@ -371,9 +393,9 @@ Astrand_fit_function <- function(x)
 Figure4A <- 
   ggplot(data = Stringer_linear_pi, aes(x = pc_VO2max, y = avDiff_mLper100mL)) +
   geom_point(shape = 21, color = "grey21", fill  = "black", stroke = 0.1, size=0.7) +
-  geom_smooth(method = lm, se = FALSE, size = 0.2, col = "red") +
-  geom_smooth(method = lm, se = FALSE, formula = y ~ poly(x, 3, raw = TRUE), size = 0.2, col="red") +
-  geom_vline(xintercept = Stringer_inflection, linetype = "dashed", size=0.2) +
+  geom_smooth(method = lm, se = FALSE, linewidth = 0.2, col = "red") +
+  geom_smooth(method = lm, se = FALSE, formula = y ~ poly(x, 3, raw = TRUE), linewidth = 0.2, col="red") +
+  geom_vline(xintercept = Stringer_inflection, linetype = "dashed", linewidth=0.2) +
   annotate(
     "text",
     x = 58,
@@ -383,7 +405,7 @@ Figure4A <-
     vjust = 1,
     size = 2.5
   ) +
-  geom_function(fun = Astrand_fit_function, size = 0.2) + # Astrand_fit_function from above
+  geom_function(fun = Astrand_fit_function, linewidth = 0.2) + # Astrand_fit_function from above
   scale_x_continuous(breaks=seq(0, 100, by = 10)) +
   scale_y_continuous(breaks=seq(0,  20, by = 2)) +
   xlab(expression("%VO"[2] ~ max)) +
@@ -443,7 +465,7 @@ Severinghaus_inflection_intercept <- Severinghaus_inflection_saturation -
 # Plotting Severinghaus_function with slope tangent of inflection
 Figure4B <- 
   ggplot(data.frame(x = c(0, 100)), aes(x = x)) +
-  stat_function(fun = Severinghaus_function, colour = "black" , size = 0.5, xlim = c(0,100)) + 
+  stat_function(fun = Severinghaus_function, colour = "black" , linewidth = 0.5, xlim = c(0,100)) + 
   # Plots horizontal dashed line corresponding to saturation at inflection 
   geom_segment(
     aes(
@@ -451,10 +473,9 @@ Figure4B <-
       xend = Severinghaus_inflection_PO2,
       y = Severinghaus_inflection_saturation,
       yend = Severinghaus_inflection_saturation,
-      size = 0.2
     ),
     linetype = "dashed",
-    size = 0.2
+    linewidth = 0.2
   )+
   # Plots slope tangent of the inflection point
   geom_abline(
@@ -462,7 +483,7 @@ Figure4B <-
     slope = Severinghaus_inflection_slope,
     linetype = "twodash",
     color = "black",
-    size = 0.5
+    linewidth = 0.5
   ) +
   # Plots vertical dashed line corresponding to PO2 at inflection
   geom_segment(
@@ -473,7 +494,7 @@ Figure4B <-
       yend = Severinghaus_inflection_saturation
     ),
     linetype = "dashed",
-    size = 0.2
+    linewidth = 0.2
   ) +
   # Plots vertical dashed line corresponding to PO2 = 40 mmHg (general resting PO2 mixed venous blood)
   geom_segment(
@@ -484,7 +505,7 @@ Figure4B <-
       yend = Severinghaus_function(40)
     ),
     linetype = "dashed",
-    size = 0.2
+    linewidth = 0.2
   ) +
   # Plots horizontal dashed line at saturation corresponding to PO2 = 40 mmHg 
   geom_segment(aes(
@@ -494,7 +515,7 @@ Figure4B <-
     yend = Severinghaus_function(40)
   ),
   linetype = "dashed",
-  size = 0.2) +
+  linewidth = 0.2) +
   scale_y_continuous(
     name = "Fractional Saturation",
     breaks = seq(0.1, 1.0, 0.1),
