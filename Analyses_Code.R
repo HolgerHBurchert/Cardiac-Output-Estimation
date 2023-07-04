@@ -4,6 +4,7 @@ library(ggpubr)
 library(rootSolve)
 library(cowplot)
 library(car)
+library(AICcmodavg)
 
 # Loading the data files which must be in same folder as the R code file
 Stringer <- read.csv("Data_Stringer_AJP_1997.csv" , header = TRUE, sep = ",")
@@ -178,6 +179,10 @@ Figure2 <- plot_grid(
 # Exporting plots from plot_grid command
 ggsave("Figure2.pdf", Figure2 , width = 18, height = 11, units = "cm")
 
+
+########################### Compare Stringer linear and cubic model using Akaike weights #########################
+
+aictab(list(linear = Stringer_linear, cubic = Stringer_3polynomial), sort = FALSE)
 
 
 ########################### PREPARING ASTRAND DATA SET #########################
@@ -378,6 +383,9 @@ ggsave("Figure3.pdf", Figure3 , width = 18, height = 11, units = "cm")
 # Partial F-test comparing linear and 3rd order polynomial fit to Astrand's data
 anova(Astrand_linear, Astrand_3polynomial, test = "F")
 
+########################### Compare Astrang linear and cubic model using Akaike weights #########################
+
+aictab(list(linear = Astrand_linear, cubic = Astrand_3polynomial), sort = FALSE)
 
 
 ######################## PLOT MODEL COMPARISON ##################################
