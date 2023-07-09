@@ -395,9 +395,7 @@ anova(Astrand_3polynomial, mod_astrand_gender0, test = "F")
 
 betas0 <- coef(mod_astrand_gender0)
 
--betas0[3]/(3*betas0[4])
-
-car::deltaMethod(mod_astrand_gender0, "-b2/(3*b3)", parameterNames = paste0("b", 0:4), level = 0.95)
+car::deltaMethod(mod_astrand_gender0, "-b2/(3*b3)", parameterNames = paste0("b", 0:4), level = 0.95) # Inflection point
 
 # Astrand model with different curves for each gender
 
@@ -410,8 +408,8 @@ astrand_gender_plot
 
 betas <- coef(mod_astrand_gender)
 
-change_point_f <- -betas[3]/(3*betas[4])
-change_point_m <- -(betas[3] + betas[3 + 4])/(3*(betas[4] + betas[4 + 4]))
+change_point_f <- -betas[3]/(3*betas[4]) # Inflection point for females
+change_point_m <- -(betas[3] + betas[3 + 4])/(3*(betas[4] + betas[4 + 4])) # Inflection point for males
 
 astrand_gender_plot <- astrand_gender_plot + 
   geom_vline(xintercept = c(change_point_m), linetype = 2, colour = "#008DFFFF", linewidth = 1) +
