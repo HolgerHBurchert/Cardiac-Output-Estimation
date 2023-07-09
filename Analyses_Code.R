@@ -11,7 +11,6 @@ Stringer <- read.csv("Data_Stringer_AJP_1997.csv" , header = TRUE, sep = ",")
 Astrand  <- read.csv("Data_Astrand_AJP_1964.csv"  , header = TRUE, sep = ";")
 
 
-
 ############################ Stringer: LINEAR MODEL ############################
 
 # Fitting linear model to Stringer's data 
@@ -183,7 +182,6 @@ ggsave("Figure2.pdf", Figure2 , width = 18, height = 11, units = "cm")
 ########################### Compare Stringer linear and cubic model using Akaike weights #########################
 
 aictab(list(linear = Stringer_linear, cubic = Stringer_3polynomial), sort = FALSE)
-
 
 ########################### PREPARING ASTRAND DATA SET #########################
 
@@ -386,6 +384,32 @@ anova(Astrand_linear, Astrand_3polynomial, test = "F")
 ########################### Compare Astrang linear and cubic model using Akaike weights #########################
 
 aictab(list(linear = Astrand_linear, cubic = Astrand_3polynomial), sort = FALSE)
+
+########################### Response to reviewer: Modelling by gender #########################
+
+mod_astrand_gender0 <- lm(avO2diff_mLper100mL ~ poly(VO2_L_pc, degree=3, raw=TRUE) + Gender, data=Astrand)
+
+anova(Astrand_3polynomial, mod_astrand_gender0, test = "F")
+
+mod_astrand_gender <- lm(avO2diff_mLper100mL ~ poly(VO2_L_pc, degree=3, raw=TRUE)*Gender, data=Astrand)
+
+anova(mod_astrand_gender0, mod_astrand_gender, test = "F")
+
+
+astrand_gender_plot <- visreg::visreg(mod_astrand_gender, "VO2_L_pc", by = "Gender", overlay = TRUE, gg = TRUE)
+astrand_gender_plot
+
+betas <- coef(mod_astrand_gender)
+
+change_point_f <- -betas[3]/(3*betas[4])
+change_point_m <- -(betas[3] + betas[3 + 4])/(3*(betas[4] + betas[4 + 4]))
+
+astrand_gender_plot <- astrand_gender_plot + 
+  geom_vline(xintercept = c(change_point_m), linetype = 2, colour = "#008DFFFF", linewidth = 1) +
+  geom_vline(xintercept = c(change_point_f), linetype = 2, colour = "#FF4E37FF", linewidth = 1)
+
+ggsave("Astrand_gender.png", astrand_gender_plot , width = 20, height = 11, units = "cm", dpi = 400)
+
 
 
 ######################## PLOT MODEL COMPARISON ##################################
