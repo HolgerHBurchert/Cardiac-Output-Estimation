@@ -387,14 +387,23 @@ aictab(list(linear = Astrand_linear, cubic = Astrand_3polynomial), sort = FALSE)
 
 ########################### Response to reviewer: Modelling by gender #########################
 
+# Astrand model with different intercept for each gender
+
 mod_astrand_gender0 <- lm(avO2diff_mLper100mL ~ poly(VO2_L_pc, degree=3, raw=TRUE) + Gender, data=Astrand)
 
 anova(Astrand_3polynomial, mod_astrand_gender0, test = "F")
 
+betas0 <- coef(mod_astrand_gender0)
+
+-betas0[3]/(3*betas0[4])
+
+car::deltaMethod(mod_astrand_gender0, "-b2/(3*b3)", parameterNames = paste0("b", 0:4), level = 0.95)
+
+# Astrand model with different curves for each gender
+
 mod_astrand_gender <- lm(avO2diff_mLper100mL ~ poly(VO2_L_pc, degree=3, raw=TRUE)*Gender, data=Astrand)
 
 anova(mod_astrand_gender0, mod_astrand_gender, test = "F")
-
 
 astrand_gender_plot <- visreg::visreg(mod_astrand_gender, "VO2_L_pc", by = "Gender", overlay = TRUE, gg = TRUE)
 astrand_gender_plot
@@ -409,7 +418,6 @@ astrand_gender_plot <- astrand_gender_plot +
   geom_vline(xintercept = c(change_point_f), linetype = 2, colour = "#FF4E37FF", linewidth = 1)
 
 ggsave("Astrand_gender.png", astrand_gender_plot , width = 20, height = 11, units = "cm", dpi = 400)
-
 
 
 ######################## PLOT MODEL COMPARISON ##################################
