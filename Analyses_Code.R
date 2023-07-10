@@ -430,9 +430,6 @@ equation_labels <- c(
             coef(Astrand_3polynomial_gender)[1 + 4], coef(Astrand_3polynomial_gender)[2 + 4], coef(Astrand_3polynomial_gender)[3 + 4], coef(Astrand_3polynomial_gender)[4 + 4])
 )
 
-eq.char <- as.character(signif(polynom::as.polynomial(betas), 2))
-eq.char <- gsub("e([+-]?[0-9]*)", "%*%10^\\1", eq.char)
-
 text_frame <- data.frame(
   Gender = factor(c("Female", "Male"))
   , x = c(inflect_f$Estimate, inflect_m$Estimate) + 1
