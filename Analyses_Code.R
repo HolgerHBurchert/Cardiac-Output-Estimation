@@ -391,7 +391,6 @@ aictab(list(linear = Astrand_linear, cubic = Astrand_3polynomial), sort = FALSE)
 
 Astrand_3polynomial_gender <- lm(avO2diff_mLper100mL ~ poly(VO2_L_pc, degree=3, raw=TRUE)*Gender, data=Astrand)
 
-
 # Plot curves separately for genders
 # Set up the prediction data frame
 
@@ -419,7 +418,6 @@ inflect_frame <- data.frame(
   , lwr = c(inflect_f$`2.5 %`, inflect_m$`2.5 %`)
   , upr = c(inflect_f$`97.5 %`, inflect_m$`97.5 %`)
 )
-
 
 # The annotation labels (equations, r2, inflection points)
 
@@ -515,34 +513,6 @@ Figure_supplement <- plot_grid(
 )
 
 ggsave("Figure_supplement.pdf", Figure_supplement , width = 25*0.6, height = 20*0.6, dpi = 400, units = "cm")
-
-# ########################### Response to reviewer: Astrand modelling by gender #########################
-# 
-# anova(mod_astrand_gender0, Astrand_3polynomial_gender, test = "F")
-# 
-# astrand_gender_plot <- visreg::visreg(Astrand_3polynomial_gender, "VO2_L_pc", by = "Gender", overlay = TRUE, gg = TRUE)
-# astrand_gender_plot
-# 
-# betas <- coef(Astrand_3polynomial_gender)
-# 
-# change_point_f <- -betas[3]/(3*betas[4]) # Inflection point for females
-# change_point_m <- -(betas[3] + betas[3 + 4])/(3*(betas[4] + betas[4 + 4])) # Inflection point for males
-# 
-# astrand_gender_plot <- astrand_gender_plot + 
-#   geom_vline(xintercept = c(change_point_m), linetype = 2, colour = "#008DFFFF", linewidth = 1) +
-#   geom_vline(xintercept = c(change_point_f), linetype = 2, colour = "#FF4E37FF", linewidth = 1)
-# 
-# ggsave("Astrand_gender.png", astrand_gender_plot , width = 20, height = 11, units = "cm", dpi = 400)
-# 
-# # Astrand model with different intercept for each gender
-# 
-# mod_astrand_gender0 <- lm(avO2diff_mLper100mL ~ poly(VO2_L_pc, degree=3, raw=TRUE) + Gender, data=Astrand)
-# 
-# anova(Astrand_3polynomial, mod_astrand_gender0, test = "F")
-# 
-# betas0 <- coef(mod_astrand_gender0)
-# 
-# car::deltaMethod(mod_astrand_gender0, "-b2/(3*b3)", parameterNames = paste0("b", 0:4), level = 0.95) # Inflection point
 
 ######################## PLOT MODEL COMPARISON ##################################
 
