@@ -4,11 +4,11 @@ library(ggpubr)
 library(rootSolve)
 library(cowplot)
 library(car)
+library(AICcmodavg)
 
 # Loading the data files which must be in same folder as the R code file
 Stringer <- read.csv("Data_Stringer_AJP_1997.csv" , header = TRUE, sep = ",")
 Astrand  <- read.csv("Data_Astrand_AJP_1964.csv"  , header = TRUE, sep = ";")
-
 
 
 ############################ Stringer: LINEAR MODEL ############################
@@ -179,6 +179,9 @@ Figure2 <- plot_grid(
 ggsave("Figure2.pdf", Figure2 , width = 18, height = 11, units = "cm")
 
 
+########################### Compare Stringer linear and cubic model using Akaike weights #########################
+
+aictab(list(linear = Stringer_linear, cubic = Stringer_3polynomial), sort = FALSE)
 
 ########################### PREPARING ASTRAND DATA SET #########################
 
@@ -378,16 +381,148 @@ ggsave("Figure3.pdf", Figure3 , width = 18, height = 11, units = "cm")
 # Partial F-test comparing linear and 3rd order polynomial fit to Astrand's data
 anova(Astrand_linear, Astrand_3polynomial, test = "F")
 
+########################### Compare Astrang linear and cubic model using Akaike weights #########################
 
+aictab(list(linear = Astrand_linear, cubic = Astrand_3polynomial), sort = FALSE)
+
+########################### Astrand 3rd ORDER POLYNOMIAL MODEL by gender #################
+
+# Astrand model with different curves for each gender
+
+Astrand_3polynomial_gender <- lm(avO2diff_mLper100mL ~ poly(VO2_L_pc, degree=3, raw=TRUE)*Gender, data=Astrand)
+
+# Plot curves separately for genders
+# Set up the prediction data frame
+
+pred_frame <- expand.grid(
+  Gender = factor(c("Female", "Male"))
+  , VO2_L_pc = seq(min(Astrand$VO2_L_pc, na.rm = TRUE), max(Astrand$VO2_L_pc, na.rm = TRUE), length = 1000)
+)
+
+preds_ci <- predict(Astrand_3polynomial_gender, newdata = pred_frame, interval = "confidence")
+pred_frame$fit <- preds_ci[, 1]
+pred_frame$ci_lwr <- preds_ci[, 2]
+pred_frame$ci_upr <- preds_ci[, 3]
+preds_pi <- predict(Astrand_3polynomial_gender, newdata = pred_frame, interval = "prediction")
+pred_frame$pi_lwr <- preds_pi[, 2]
+pred_frame$pi_upr <- preds_pi[, 3]
+
+# Calculate the inflection points and corresponding confidence intervals
+
+inflect_f <- car::deltaMethod(Astrand_3polynomial_gender, "-b2/(3*b3)", parameterNames = paste0("b", 0:7), level = 0.95) # Inflection point for females
+inflect_m <- car::deltaMethod(Astrand_3polynomial_gender, "-(b2 + b6)/(3*(b3 + b7))", parameterNames = paste0("b", 0:7), level = 0.95) # Inflection point for males
+
+inflect_frame <- data.frame(
+  Gender = factor(c("Female", "Male"))
+  , x = c(inflect_f$Estimate, inflect_m$Estimate)
+  , lwr = c(inflect_f$`2.5 %`, inflect_m$`2.5 %`)
+  , upr = c(inflect_f$`97.5 %`, inflect_m$`97.5 %`)
+)
+
+# The annotation labels (equations, r2, inflection points)
+
+equation_labels <- c(
+  sprintf("italic(y) == %.2g %+.2g ~ italic(x) %+.1e ~ italic(x^2) %+.1e ~ italic(x^3) ",
+          coef(Astrand_3polynomial_gender)[1], coef(Astrand_3polynomial_gender)[2], coef(Astrand_3polynomial_gender)[3], coef(Astrand_3polynomial_gender)[4])
+  , sprintf("italic(y) == %.2g %+.2g ~ italic(x) %+.1e ~ italic(x^2) %+.1e ~ italic(x^3) ",
+            coef(Astrand_3polynomial_gender)[1 + 4], coef(Astrand_3polynomial_gender)[2 + 4], coef(Astrand_3polynomial_gender)[3 + 4], coef(Astrand_3polynomial_gender)[4 + 4])
+)
+
+text_frame <- data.frame(
+  Gender = factor(c("Female", "Male"))
+  , x = c(inflect_f$Estimate, inflect_m$Estimate) + 1
+  , formula = gsub("e([+-]?[0-9]*)", "%*%10^\\1", equation_labels)
+  , r2 = rep(c(sprintf("adj.~italic(R^2) == %.2f", summary(Astrand_3polynomial_gender)$adj.r.squared)), 2)
+  , n = c(sprintf("n == %.0f", table(Astrand$Gender)["Female"]), sprintf("n == %.0f", table(Astrand$Gender)["Male"]))
+  , inflection = c(
+    sprintf("Inflection Point (%.1f%%)", inflect_f$Estimate)
+    , sprintf("Inflection Point (%.1f%%)", inflect_m$Estimate)
+  )
+)
+
+# Make the graphic
+
+Figure_supplement1 <- ggplot(data = Astrand, aes(x = VO2_L_pc, y = avO2diff_mLper100mL)) +
+  geom_point(
+    aes(colour = factor(Gender), fill = factor(Gender)),
+    shape = 21,
+    show.legend = FALSE,
+    stroke = 0.1,
+    size = 0.7
+  ) +
+  geom_line(data = pred_frame, aes(x = VO2_L_pc, y = fit, group = Gender), linewidth=0.2) +
+  geom_ribbon(data = pred_frame, aes(x = VO2_L_pc, y = fit, ymin = ci_lwr, ymax = ci_upr, group = Gender), colour = NA, alpha = 0.2) +
+  geom_ribbon(data = pred_frame, aes(x = VO2_L_pc, y = fit, ymin = pi_lwr, ymax = pi_upr, group = Gender), colour = "black", fill = NA, linetype = 2, linewidth = 0.2) +
+  geom_vline(data = inflect_frame, aes(xintercept = x, group = Gender), linetype = 2, linewidth = 0.2) +
+  geom_rect(data = inflect_frame, aes(xmin = lwr, xmax = upr, ymin = -Inf, ymax = Inf, group = Gender), fill = "grey", alpha = 0.3, inherit.aes = FALSE) +
+  facet_wrap(~Gender) +
+  geom_label(data = text_frame, aes(label = formula), x = 5, y = 21, parse = TRUE, hjust = 0, size = 2.4, fill = "white", label.size = NA, label.padding = unit(0.1, "lines")) +
+  geom_label(data = text_frame, aes(label = r2), x = 5, y = 21-2.1, parse = TRUE, hjust = 0, size = 2.4, fill = "white", label.size = NA, label.padding = unit(0.1, "lines")) +
+  geom_label(data = text_frame, aes(label = n), x = 5, y = 21-2.1*2, parse = TRUE, hjust = 0, size = 2.4, fill = "white", label.size = NA, label.padding = unit(0.1, "lines")) +
+  geom_text(data = text_frame, aes(label = inflection, x = x), y = 1, parse = FALSE, hjust = 0, size = 2) +
+  scale_fill_manual(values = c("Female" = "red", "Male" = "black"))+
+  scale_color_manual(values = c("Female" = "firebrick2", "Male" = "grey21")) +
+  scale_x_continuous(breaks = seq(0, 120, by=10)) +
+  scale_y_continuous(breaks = seq(0, 20,  by=2), limits = c(0, 22)) +
+  labs(
+    y = expression(paste("C(a-", bar(v), "DO"[2]*")" ~ "(ml/100ml)"))
+    , x =expression("%VO"[2] ~ max)
+  ) +
+  theme_bw() +
+  theme(
+    text=element_text(size=9)
+    , axis.text = element_text(size=8)
+    , strip.text.x = element_text(size = 8)
+  )
+
+# Residual graphic
+
+lowess_Astrand_3polynomial <-
+  as.data.frame(with(
+    Astrand_3polynomial_gender$model,
+    lowess(x = Astrand_3polynomial_gender$fitted.values, y = Astrand_3polynomial_gender$residuals)
+  ))
+
+# Residuals vs Fitted Values for Astrands' linear model #DOUBLE CHECK IF COLOUR CODING OF GROUPS IS CORRECT
+
+Figure_supplement_resid <- 
+  ggplot(Astrand_3polynomial_gender$model, aes(x = Astrand_3polynomial_gender$fitted.values, y = Astrand_3polynomial_gender$residuals)) +
+  geom_point(
+    aes(colour = factor(Astrand$Gender), fill = factor(Astrand$Gender)),
+    shape = 21,
+    show.legend = FALSE,
+    stroke = 0.1,
+    size = 1
+  ) +
+  scale_fill_manual(values = c("Female" = "red", "Male" = "black")) +
+  scale_color_manual(values = c("Female" = "firebrick2", "Male" = "grey21")) +
+  geom_hline(yintercept = 0, linetype = "dashed", col = "grey") +
+  geom_path(data = lowess_Astrand_3polynomial, aes(x = x, y = y), col = "black", linewidth = 0.2) +
+  xlab(expression("Fitted Values")) +
+  ylab(expression("Residuals")) +
+  theme_bw() +
+  theme(text = element_text(size = 9), axis.text = element_text(size = 8))
+
+
+# Creating multi-panel figure
+Figure_supplement <- plot_grid(
+  Figure_supplement1
+  , Figure_supplement_resid
+  , nrow = 2
+  , labels = c('A', 'B')
+)
+
+ggsave("Figure_supplement.pdf", Figure_supplement , width = 25*0.6, height = 20*0.6, dpi = 400, units = "cm")
 
 ######################## PLOT MODEL COMPARISON ##################################
 
 # Store 3rd order polynomial model of Astrand's data as function named Astrand_fit_function
-Astrand_fit_function <- function(x)
+Astrand_fit_function <- function(x) {
   coef(Astrand_3polynomial)[1]         +
-  coef(Astrand_3polynomial)[2] * x     +
-  coef(Astrand_3polynomial)[3] * x ^ 2 +
-  coef(Astrand_3polynomial)[4] * x ^ 3
+    coef(Astrand_3polynomial)[2] * x     +
+    coef(Astrand_3polynomial)[3] * x ^ 2 +
+    coef(Astrand_3polynomial)[4] * x ^ 3
+}
 
 # Plot Comparing the models
 Figure4A <- 
@@ -412,7 +547,6 @@ Figure4A <-
   ylab(expression(paste("C(a-", bar(v), "DO"[2]*")" ~ "(ml/100ml)"))) + 
   theme_bw() +
   theme(text = element_text(size = 9))
-
 
 
 ################### INFLECTION POINT OF SEVERINGHAUS ODC #######################
