@@ -1,3 +1,19 @@
+## Author:
+## Project:
+## Title:
+## Last Edited:
+
+# Install packages 
+packages <- c("ggplot2", "ggpubr", "rootSolve", "cowplot", "car", "AICcmodavg")
+install.packages(setdiff(packages, rownames(installed.packages())), dependencies = TRUE)
+
+# General comments
+# 1. Pack code for each model/plot in function and only call the functions. This makes it easier for users to see what is going on
+# 2. Docstrings: Add Roxygen docstrings for each function you define. Functions should be defined at the start of the file
+# 3. Did you check the model assumptions for the original data?
+# 4. Dependencies in R should be defined in a DESCRIPTION file or in the code itself (I inserted it above)
+
+
 # Required libraries which are available at https://cran.r-project.org/
 library(ggplot2)
 library(ggpubr)

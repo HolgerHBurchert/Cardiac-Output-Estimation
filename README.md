@@ -4,6 +4,9 @@ This R project repository is associated with the manuscript "Revisiting cardiac 
 The repository contains the data and the analyses code to facilitate repetition, replication and reproduction of the analyses published in the manuscript.
 To cite the code, use: [![DOI](https://zenodo.org/badge/644910171.svg)](https://zenodo.org/badge/latestdoi/644910171)
 
+## Quickstart 
+... Describe how people can easily use the code
+
 ## Repository Content:
 - The R file containing all the analyses code, called "Analyses_Code".
 
@@ -18,15 +21,3 @@ To cite the code, use: [![DOI](https://zenodo.org/badge/644910171.svg)](https://
 - The R project file named "Cardiac-Output-Estimation.Rproj". 
 - the .gitignore file
 
-## Dependencies
-The R code requires that the following packages are installed: ggplot2, ggpubr, rootSolve, cowplot, car and AICcmodavg. These packages are available at https://cran.r-project.org/ and
-can be installed using the following code:
-
-```{r}
-install.packages("ggplot2")
-install.packages("ggpubr")
-install.packages("rootSolve")
-install.packages("cowplot")
-install.packages("car")
-install.packages("AICcmodavg")
-```
