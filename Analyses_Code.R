@@ -12,7 +12,7 @@ install.packages(setdiff(packages, rownames(installed.packages())), dependencies
 # 2. Docstrings: Add Roxygen docstrings for each function you define. Functions should be defined at the start of the file
 # 3. Did you check the model assumptions for the original data?
 # 4. Dependencies in R should be defined in a DESCRIPTION file or in the code itself (I inserted it above)
-
+# 5. I would suggest to put all generated files in a seperate folder for a clearer structure.
 
 # Required libraries which are available at https://cran.r-project.org/
 library(ggplot2)
